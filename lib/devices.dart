@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -28,7 +27,8 @@ class _DeviceListState extends State<DeviceListScreen> {
     device['owner'] = _user.uid;
 
     final String deviceId = device['serial_number'];
-    var pendingRef = Firestore.instance.collection('pending').document(deviceId);
+    var pendingRef =
+        Firestore.instance.collection('pending').document(deviceId);
     pendingRef.setData(device);
 
     final snackBar = SnackBar(content: Text('Registering $deviceId'));
@@ -52,30 +52,45 @@ class _DeviceListState extends State<DeviceListScreen> {
     }
 
     return StreamBuilder<QuerySnapshot>(
-        stream: Firestore.instance.collection('devices')
+      stream: Firestore.instance
+          .collection('devices')
           .where('owner', isEqualTo: user.uid)
           .snapshots(),
-        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-          if (snapshot.hasError)
-            return Text('Error: ${snapshot.error}');
-          switch (snapshot.connectionState) {
-            case ConnectionState.waiting:
-              return Center(child: CircularProgressIndicator());
-            default:
-              return ListView(
-                children: snapshot.data.documents.map((DocumentSnapshot data) {
-                  Device device = Device.fromData(data.data, data.documentID);
-                  return ListTile(
-                    title: Text(device.name),
-                    subtitle: Text(device.deviceStatus),
-                    leading: Icon(device.deviceIcon),
-                    onTap: () => _selectDevice(context, device),
-                  );
-                }).toList(),
+      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        if (snapshot.hasError) return Text('Error: ${snapshot.error}');
+        switch (snapshot.connectionState) {
+          case ConnectionState.waiting:
+            return Center(child: CircularProgressIndicator());
+          default:
+            if (snapshot.hasData) {
+              return _buildListDevices(
+                snapshot.data,
               );
-          }
-        },
-      );
+            }
+            return Center(
+              child: Icon(
+                Icons.error,
+              ),
+            );
+        }
+      },
+    );
+  }
+
+  Widget _buildListDevices(QuerySnapshot qrySnapshot) {
+    return ListView(
+      children: qrySnapshot.documents.map((DocumentSnapshot data) {
+        if (data.data.isNotEmpty) {
+          Device device = Device.fromData(data.data, data.documentID);
+          return ListTile(
+            title: Text(device.name),
+            subtitle: Text(device.deviceStatus),
+            leading: Icon(device.deviceIcon),
+            onTap: () => _selectDevice(context, device),
+          );
+        }
+      }).toList(),
+    );
   }
 
   @override
